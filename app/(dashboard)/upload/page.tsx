@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import {
@@ -11,7 +11,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Upload, FileText, AlertCircle, CheckCircle2, Loader2, Database, X } from "lucide-react";
+import { Upload, FileText, AlertCircle, CheckCircle2, Loader2, Database, X, Ban } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 type CsvRow = Record<string, string>;
@@ -26,7 +26,11 @@ export default function UploadPage() {
   const [columns, setColumns] = useState<string[]>([]);
   const [filename, setFilename] = useState("");
   const [error, setError] = useState("");
+  const [showCancel, setShowCancel] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [dragOver, setDragOver] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
+  const cancelTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
   const queryClient = useQueryClient();
 
@@ -101,13 +105,25 @@ export default function UploadPage() {
   const handleUpload = async () => {
     setStatus("uploading");
     setError("");
+    setShowCancel(false);
+
+    const abort = new AbortController();
+    abortRef.current = abort;
+
+    cancelTimerRef.current = setTimeout(() => {
+      setShowCancel(true);
+    }, 60000);
 
     try {
       const res = await fetch("/api/upload", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ filename, rows: allRows }),
+        signal: abort.signal,
       });
+
+      if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
+      abortRef.current = null;
 
       if (!res.ok) {
         const data = await res.json();
@@ -123,8 +139,23 @@ export default function UploadPage() {
 
       setStatus("confirm");
     } catch (err) {
+      if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
+      abortRef.current = null;
+
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setStatus("idle");
+        return;
+      }
+
       setError(err instanceof Error ? err.message : "Upload failed");
       setStatus("preview");
+    }
+  };
+
+  const handleCancelUpload = () => {
+    setCancelling(true);
+    if (abortRef.current) {
+      abortRef.current.abort();
     }
   };
 
@@ -143,6 +174,12 @@ export default function UploadPage() {
     setError("");
   };
 
+  useEffect(() => {
+    return () => {
+      if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
+    };
+  }, []);
+
   if (status === "uploading") {
     return (
       <div className="fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm">
@@ -153,11 +190,23 @@ export default function UploadPage() {
           </div>
           <h2 className="text-xl font-semibold text-foreground">Processing upload</h2>
           <p className="text-foreground-muted">
-            Inserting {totalRows} vehicle records into the database. This will only take a moment.
+            Inserting {totalRows} vehicle records into the database. This may take up to a few minutes for large files.
           </p>
           <div className="w-48 h-1.5 bg-surface-raised rounded-full overflow-hidden">
             <div className="h-full bg-primary rounded-full animate-pulse" style={{ width: "60%" }} />
           </div>
+          {showCancel && !cancelling && (
+            <button
+              onClick={handleCancelUpload}
+              className="flex items-center gap-2 text-sm text-foreground-faint hover:text-error transition-colors mt-2"
+            >
+              <Ban className="size-4" />
+              Cancel upload
+            </button>
+          )}
+          {cancelling && (
+            <p className="text-sm text-foreground-faint">Cancelling...</p>
+          )}
         </div>
       </div>
     );

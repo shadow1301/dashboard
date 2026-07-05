@@ -4,14 +4,14 @@ import { prisma } from "@/lib/prisma";
 
 const fieldMap: Record<string, string> = {
   vehicle_id: "vehicleId",
-  vehicle_model: "vehicleModel",
+  car_model: "vehicleModel",
   battery_type: "batteryType",
-  battery_capacity: "batteryCapacity",
-  vehicle_age: "vehicleAge",
-  total_charging_cycle: "totalChargingCycle",
-  avg_temp_c: "avgTempC",
+  battery_capacity_kwh: "batteryCapacity",
+  vehicle_age_months: "vehicleAge",
+  total_charging_cycles: "totalChargingCycle",
+  avg_temperature_c: "avgTempC",
   fast_charge_ratio: "fastChargeRatio",
-  avg_discharge_rate: "avgDischargeRate",
+  avg_discharge_rate_c: "avgDischargeRate",
   driving_style: "drivingStyle",
   soh_percent: "sohPercent",
 };
@@ -42,13 +42,12 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json(
         { error: "Invalid request body. filename (string) and rows (non-empty array) are required." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     let errorCount = 0;
     let successCount = 0;
-    const errors: string[] = [];
 
     for (const rawRow of body.rows) {
       if (typeof rawRow !== "object" || rawRow === null) {
@@ -65,6 +64,10 @@ export async function POST(request: Request) {
 
         for (const field of numericFields) {
           mapped[field] = parseFloat(mapped[field] as string) || 0;
+        }
+
+        if (typeof mapped.drivingStyle === "string") {
+          mapped.drivingStyle = mapped.drivingStyle.toLowerCase();
         }
 
         mapped.userId = session.user.id;
@@ -91,7 +94,7 @@ export async function POST(request: Request) {
   } catch (error) {
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
