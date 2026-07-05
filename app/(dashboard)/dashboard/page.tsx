@@ -2,13 +2,14 @@
 
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useVehicles } from "@/hooks/useVehicles";
 import { useAlerts } from "@/hooks/useAlerts";
 import { StatCard, StatCardSkeleton } from "@/components/dashboard/StatCard";
 import { HealthDistributionChart } from "@/components/dashboard/HealthDistributionChart";
 import { RecentAlerts } from "@/components/dashboard/RecentAlerts";
 import { calculateHealthScore } from "@/lib/predictions";
-import { Truck, AlertTriangle, Activity, Battery } from "lucide-react";
+import { Truck, AlertTriangle, Activity, Battery, Upload } from "lucide-react";
 
 export default function DashboardPage() {
   const { data: vehicles, isLoading: vLoading, error: vError } = useVehicles();
@@ -16,7 +17,7 @@ export default function DashboardPage() {
   const router = useRouter();
 
   const stats = useMemo(() => {
-    if (!vehicles) return null;
+    if (!vehicles || vehicles.length === 0) return null;
     const scores = vehicles.map(calculateHealthScore);
     const avg = scores.reduce((a, b) => a + b, 0) / scores.length;
     const atRisk = scores.filter((s) => s < 60).length;
@@ -34,6 +35,25 @@ export default function DashboardPage() {
       <div className="flex flex-col items-center justify-center h-full text-center">
         <p className="text-error text-lg font-medium">Failed to load fleet data</p>
         <p className="text-foreground-muted text-sm mt-1">Please try again later.</p>
+      </div>
+    );
+  }
+
+  if (!vLoading && vehicles && vehicles.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center">
+        <Upload className="size-16 text-foreground-faint mb-4" />
+        <h2 className="text-xl font-semibold text-foreground mb-2">No fleet data yet</h2>
+        <p className="text-foreground-muted mb-6 max-w-sm">
+          Upload a CSV file with your vehicle battery data to get started with health monitoring and analytics.
+        </p>
+        <Link
+          href="/upload"
+          className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+        >
+          <Upload className="size-4" />
+          Upload your first file
+        </Link>
       </div>
     );
   }

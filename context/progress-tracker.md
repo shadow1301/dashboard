@@ -6,9 +6,9 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
-**Phase:** Context updated for Phase 7 — Backend (awaiting implementation)
-**Last completed:** Phase 6 — Polish & Responsive
-**Next:** Phase 7-15 — Database Setup (PostgreSQL + Prisma)
+**Phase:** Phase 7 — Backend in progress
+**Last completed:** Database setup + Auth.js config + Registration
+**Next:** Wire register/login pages, build vehicle/alerts/analytics API routes
 
 ---
 
@@ -48,8 +48,19 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ### Phase 7 — Backend (Database, Auth, CSV Upload)
 
-- [ ] 15 Database Setup — PostgreSQL + Prisma
-- [ ] 16 Auth System — NextAuth.js v5 (replaces mock auth)
+- [x] 15 Database Setup — PostgreSQL + Prisma (migration 00001_init applied)
+- [x] 16 Auth System — NextAuth.js v5 (replaces mock auth)
+  - [x] lib/auth.ts — Auth.js v5 config (Credentials + PrismaAdapter + bcrypt)
+  - [x] lib/prisma.ts — PrismaClient singleton with PrismaPg adapter
+  - [x] app/api/auth/[...nextauth]/route.ts — NextAuth route handler
+  - [x] app/api/auth/register/route.ts — Registration API
+  - [x] Register page + form (/register)
+  - [x] LoginForm — uses signIn("credentials", { redirect: false })
+  - [x] AuthGuard — uses useSession from next-auth/react
+  - [x] useAuth hook — wraps useSession/signOut from next-auth/react
+  - [x] Providers — SessionProvider added
+  - [x] Sidebar — uses real logout
+  - [x] Layout — replaced mock AuthProvider with SessionProvider
 - [ ] 17 API Routes — Vehicles + Alerts + Analytics
 - [ ] 18 CSV Upload — Single File (dropzone → parse → DB)
 - [ ] 19 CSV Upload — Batch + Upload History
@@ -70,16 +81,18 @@ Update this file after every completed feature. Any AI agent reading this should
 - **Predictions:** Linear remaining-cycles estimate based on current degradation rate
 - **Alerts:** Auto-generated from vehicles with health < 80, sorted by severity
 
-### Backend (Planned)
-- **Database:** PostgreSQL with Prisma ORM
-- **Auth:** NextAuth.js v5 (Auth.js) with Credentials provider, database sessions
+### Backend
+- **Database:** PostgreSQL (Neon serverless) with Prisma v7 ORM
+- **Auth:** Auth.js v5 (next-auth@beta) with Credentials provider, database sessions via PrismaAdapter
 - **Password hashing:** bcryptjs (10 salt rounds)
+- **Prisma v7 specifics:** `prisma-client` generator (not `prisma-client-js`), requires `prisma.config.ts`, needs driver adapter (`@prisma/adapter-pg` + `pg`), `PrismaClient` requires `{ adapter }` option
+- **Migration:** `prisma db push` for Neon (no shadow database permission); used `prisma migrate diff` to generate SQL + `prisma migrate resolve` to mark as applied
+- **Neon permissions:** `authenticator` role lacks DDL permissions — used `neondb_owner` role for schema changes
 - **CSV parsing:** papaparse (client preview + server validation)
 - **File upload:** Next.js built-in formData() API — no multer/formidable needed
 - **API pattern:** Route Handlers returning JSON, all scoped to authenticated user
 - **Data isolation:** All queries filter by userId — no multi-tenant data leakage
 - **Pagination:** Server-side cursor/offset pagination on fleet table + alerts
-- **Database hosting:** Neon (serverless PostgreSQL) — Vercel Postgres discontinued
 - **CSV handling:** In-memory only — parse with papaparse, discard file after processing, no disk/S3 storage
 - **New user state:** Empty — no seed data, upload page is the entry point
 
@@ -87,10 +100,9 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## What to Do Next
 
-1. Install backend dependencies (prisma, @prisma/client, bcryptjs, next-auth, @auth/prisma-adapter, papaparse)
-2. Set up Prisma schema and run initial migration
-3. Implement Auth.js v5 (replace mock auth)
-4. Build vehicle/alerts/analytics API routes
-5. Migrate hooks from static data to API calls
-6. Build CSV upload UI and API
-7. Test full flow: register → login → upload CSV → see fleet → view analytics
+1. Wire up API routes for vehicles, alerts, analytics, upload history
+2. Build CSV upload page + API handler (dropzone + papaparse → insert to Neon)
+3. Migrate hooks from static data to TanStack Query + API calls
+4. Remove `generateStaticParams` + static data dependencies
+5. Test full flow: register → login → upload CSV → see fleet → view analytics
+6. Delete mock-auth artifacts (old lib/auth.ts functions no longer needed)

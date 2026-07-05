@@ -11,6 +11,8 @@ const pageTitles: Record<string, string> = {
   "/fleet": "Fleet Overview",
   "/analytics": "Analytics",
   "/alerts": "Alerts",
+  "/upload": "Upload Data",
+  "/settings": "Settings",
 };
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {

@@ -2,9 +2,9 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { z } from "zod";
-import { login, type Session } from "@/lib/auth";
-import { useAuth } from "@/hooks/useAuth";
+import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,7 +23,6 @@ export function LoginForm() {
   const [errors, setErrors] = useState<FormErrors>({});
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const { refresh } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,11 +40,21 @@ export function LoginForm() {
 
     setLoading(true);
     try {
-      await login(email, password);
-      refresh();
+      const res = await signIn("credentials", {
+        email,
+        password,
+        redirect: false,
+      });
+
+      if (res?.error) {
+        setErrors({ general: "Invalid email or password" });
+        return;
+      }
+
       router.push("/dashboard");
+      router.refresh();
     } catch {
-      setErrors({ general: "Login failed. Please try again." });
+      setErrors({ general: "Connection failed. Please try again." });
     } finally {
       setLoading(false);
     }
@@ -78,22 +87,22 @@ export function LoginForm() {
             <Input
               id="password"
               type="password"
-              placeholder="any password works in demo"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
             {errors.password && <p className="text-xs text-error">{errors.password}</p>}
           </div>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex flex-col gap-3">
           <Button type="submit" className="w-full" disabled={loading}>
             {loading ? "Signing in..." : "Sign in"}
           </Button>
+          <p className="text-xs text-foreground-faint text-center">
+            Don&apos;t have an account?{" "}
+            <Link href="/register" className="text-primary hover:underline">Create one</Link>
+          </p>
         </CardFooter>
       </form>
-      <p className="text-xs text-foreground-faint text-center pb-6 px-6">
-        Demo: enter any email and password
-      </p>
     </Card>
   );
 }

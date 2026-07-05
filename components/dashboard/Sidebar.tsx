@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { useTheme } from "@/components/layout/ThemeProvider";
 import { siteConfig } from "@/data/site";
@@ -10,7 +10,9 @@ import {
   LayoutDashboard,
   Truck,
   BarChart3,
+  Upload,
   Bell,
+  Settings,
   LogOut,
   Sun,
   Moon,
@@ -22,7 +24,9 @@ const iconMap: Record<string, React.ElementType> = {
   LayoutDashboard,
   Truck,
   BarChart3,
+  Upload,
   Bell,
+  Settings,
 };
 
 type SidebarProps = {
@@ -32,14 +36,8 @@ type SidebarProps = {
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
-  const router = useRouter();
-  const { logout, session } = useAuth();
+  const { session, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
-
-  const handleLogout = () => {
-    logout();
-    router.push("/login");
-  };
 
   return (
     <>
@@ -96,7 +94,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             {theme === "dark" ? "Light mode" : "Dark mode"}
           </button>
           <button
-            onClick={handleLogout}
+            onClick={() => logout()}
             className="flex items-center gap-3 w-full px-3 py-2.5 rounded-md text-sm text-foreground-muted hover:text-foreground hover:bg-surface-raised transition-colors"
           >
             <LogOut size={18} />
