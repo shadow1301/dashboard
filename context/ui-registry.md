@@ -143,6 +143,61 @@ File: components/alerts/AlertBadge.tsx
 | Separator | `/` in `text-foreground-faint` |
 | Current | `text-foreground font-medium` |
 
+### FileDropzone
+File: components/upload/FileDropzone.tsx
+| Property | Class |
+|----------|-------|
+| Container | `border-2 border-dashed border-border-strong rounded-lg p-8 bg-surface text-center cursor-pointer` |
+| Drag active | `border-primary bg-primary/5` |
+| Error | `border-error bg-error/5` |
+| Icon | `text-foreground-faint mb-2 mx-auto` |
+| Text | `text-foreground-muted text-sm` |
+| Hint | `text-foreground-faint text-xs mt-1` |
+
+### UploadProgress
+File: components/upload/UploadProgress.tsx
+| Property | Class |
+|----------|-------|
+| Container | `flex items-center gap-3 p-3 bg-surface rounded-lg border border-border` |
+| Progress track | `bg-surface-raised rounded-full h-2 flex-1` |
+| Progress fill | `bg-primary rounded-full h-2 transition-all duration-300` |
+| Status icon | success: `text-health-good`, error: `text-error`, processing: `text-primary animate-spin` |
+
+### BatchUploadList
+File: components/upload/BatchUploadList.tsx
+| Property | Class |
+|----------|-------|
+| Container | `space-y-2` |
+| File item | `flex items-center gap-3 p-3 bg-surface rounded-lg border border-border` |
+| Remove button | `text-foreground-faint hover:text-error transition-colors` |
+
+### UploadResult
+File: components/upload/UploadResult.tsx
+| Property | Class |
+|----------|-------|
+| Success banner | `bg-health-good/10 border border-health-good/30 text-health-good rounded-lg px-4 py-3` |
+| Warning banner | `bg-warning/10 border border-warning/30 text-warning rounded-lg px-4 py-3` |
+| Error banner | `bg-error/10 border border-error/30 text-error rounded-lg px-4 py-3` |
+| Error list | `mt-2 text-sm space-y-1 text-foreground-muted` |
+
+### CsvPreview
+File: components/upload/CsvPreview.tsx
+| Property | Class |
+|----------|-------|
+| Container | `overflow-x-auto rounded-lg border border-border` |
+| Table | `w-full text-sm` |
+| Header | `bg-surface text-foreground-muted text-xs font-semibold uppercase` |
+| Cell | `px-3 py-2 font-mono text-xs text-foreground border-b border-border` |
+
+### Pagination
+(Used in FleetTable and AlertTable for server-side pages)
+| Property | Class |
+|----------|-------|
+| Container | `flex items-center justify-between pt-4 text-sm` |
+| Info text | `text-foreground-muted` |
+| Buttons | `inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-border-strong text-foreground hover:bg-surface-raised disabled:opacity-50` |
+| Active page | `bg-primary text-primary-foreground border-primary` |
+
 ### Skeleton (Loading State)
 | Property | Class |
 |----------|-------|
@@ -150,3 +205,4 @@ File: components/alerts/AlertBadge.tsx
 | Text line | `h-4 w-3/4` |
 | Card skeleton | `h-32 w-full` |
 | Row skeleton | `h-12 w-full` |
+| Table skeleton | `space-y-1` with `h-10` rows |

@@ -2,19 +2,26 @@
 
 ## Stack
 
-| Layer            | Tool                          | Purpose                              |
-| ---------------- | ----------------------------- | ------------------------------------ |
-| Framework        | Next.js 16 (App Router)       | Full stack framework                  |
-| Styling          | Tailwind CSS v4               | Utility styling, tokens via `@theme`  |
-| Language         | TypeScript strict             | Throughout                            |
-| UI Components    | shadcn/ui (Radix primitives)  | Accessible dashboard components       |
-| Charts           | Recharts                      | Degradation curves, distributions     |
-| Data Fetching    | TanStack Query                | Client-side data (simulated async)    |
-| Icons            | lucide-react                  | All icons                             |
-| Fonts            | next/font/google              | Inter (UI), JetBrains Mono (data)     |
-| Animations       | Framer Motion (light)         | Layout transitions, card reveals      |
-| Form Validation  | Zod                           | Login form validation                 |
-| Deployment       | Vercel                        | Hosting                               |
+| Layer              | Tool                          | Purpose                              |
+| ------------------ | ----------------------------- | ------------------------------------ |
+| Framework          | Next.js 16 (App Router)       | Full stack framework                  |
+| Styling            | Tailwind CSS v4               | Utility styling, tokens via `@theme`  |
+| Language           | TypeScript strict             | Throughout                            |
+| UI Components      | shadcn/ui (Radix primitives)  | Accessible dashboard components       |
+| Charts             | Recharts                      | Degradation curves, distributions     |
+| Data Fetching      | TanStack Query                | Client-side data from API routes      |
+| Icons              | lucide-react                  | All icons                             |
+| Fonts              | next/font/google              | Inter (UI), JetBrains Mono (data)     |
+| Animations         | Framer Motion (light)         | Layout transitions, card reveals      |
+| Form Validation    | Zod                           | Login form, CSV upload validation     |
+| Database           | PostgreSQL                    | Production data store                  |
+| ORM                | Prisma                        | Type-safe database access              |
+| Auth               | Auth.js v5 (NextAuth.js)      | Email/password auth with DB sessions  |
+| File Upload        | multer / formidable           | Multipart CSV file handling            |
+| CSV Parsing        | papaparse                     | Client + server CSV parsing            |
+| Password Hashing   | bcryptjs                      | Secure password storage                |
+| Database Hosting   | Neon                           | Serverless PostgreSQL                   |
+| Deployment         | Vercel                         | Hosting                              |
 
 ---
 
@@ -23,209 +30,360 @@
 ```
 /
 ├── AGENTS.md
-├── context/
-│   ├── project-overview.md
-│   ├── architecture.md
-│   ├── ui-tokens.md
-│   ├── ui-rules.md
-│   ├── ui-registry.md
-│   ├── code-standards.md
-│   ├── library-docs.md
-│   ├── build-plan.md
-│   └── progress-tracker.md
+├── context/                             → All project context files
 ├── app/
-│   ├── layout.tsx                          → Root layout, fonts, ThemeProvider
-│   ├── page.tsx                            → Redirects to /dashboard or /login
+│   ├── layout.tsx                       → Root layout, fonts, SessionProvider
+│   ├── page.tsx                         → Redirects to /dashboard or /login
 │   ├── login/
-│   │   └── page.tsx                        → Mock login page
+│   │   └── page.tsx                     → Login page
+│   ├── register/
+│   │   └── page.tsx                     → Registration page
 │   ├── (dashboard)/
-│   │   ├── layout.tsx                      → Sidebar + header shell
-│   │   ├── page.tsx                        → Fleet dashboard overview
+│   │   ├── layout.tsx                   → Sidebar + header shell (protected)
+│   │   ├── dashboard/
+│   │   │   └── page.tsx                 → Fleet dashboard overview
 │   │   ├── fleet/
-│   │   │   ├── page.tsx                    → Full fleet table
+│   │   │   ├── page.tsx                 → Fleet table (server paginated)
 │   │   │   └── [vehicleId]/
-│   │   │       └── page.tsx                → Vehicle detail + degradation charts
+│   │   │       └── page.tsx             → Vehicle detail + degradation charts
 │   │   ├── analytics/
-│   │   │   └── page.tsx                    → Cross-fleet analytics
-│   │   └── alerts/
-│   │       └── page.tsx                    → Alerts dashboard
-│   └── api/                                → (future API routes — empty in MVP)
+│   │   │   └── page.tsx                 → Cross-fleet analytics
+│   │   ├── alerts/
+│   │   │   └── page.tsx                 → Alerts dashboard
+│   │   ├── upload/
+│   │   │   ├── page.tsx                 → CSV upload (single + batch)
+│   │   │   └── history/
+│   │   │       └── page.tsx             → Upload history
+│   │   └── settings/
+│   │       └── page.tsx                 → Account settings
+│   └── api/
+│       ├── auth/
+│       │   └── [...nextauth]/
+│       │       └── route.ts             → Auth.js API routes
+│       ├── vehicles/
+│       │   ├── route.ts                 → GET /api/vehicles (paginated, filtered)
+│       │   └── [vehicleId]/
+│       │       └── route.ts             → GET /api/vehicles/[vehicleId]
+│       ├── alerts/
+│       │   ├── route.ts                 → GET /api/alerts
+│       │   └── [alertId]/
+│       │       └── route.ts             → PATCH /api/alerts/[alertId] (mark read/dismiss)
+│       ├── analytics/
+│       │   └── route.ts                 → GET /api/analytics (aggregated stats)
+│       ├── upload/
+│       │   ├── route.ts                 → POST /api/upload (single file)
+│       │   └── batch/
+│       │       └── route.ts             → POST /api/upload/batch
+│       └── upload-history/
+│           └── route.ts                 → GET /api/upload-history
 ├── components/
-│   ├── ui/                                 → shadcn/ui primitives (button, input, card, table, badge, etc.)
-│   ├── dashboard/
-│   │   ├── DashboardShell.tsx              → Sidebar + header layout
-│   │   ├── Sidebar.tsx                     → Navigation sidebar
-│   │   ├── Header.tsx                      → Top header bar
-│   │   ├── StatCard.tsx                    → Metric display card
-│   │   ├── HealthDistributionChart.tsx     → Bar chart: health score buckets
-│   │   └── RecentAlerts.tsx                → Alert feed widget
-│   ├── fleet/
-│   │   ├── FleetTable.tsx                  → Sortable/filterable table
-│   │   ├── FleetFilters.tsx                → Filter controls
-│   │   ├── VehicleHeroCard.tsx             → Summary card for detail page
-│   │   ├── DegradationChart.tsx            → SoH vs cycles line chart
-│   │   ├── TemperatureChart.tsx            → Temp history chart
-│   │   └── PredictionWidget.tsx            → RUL prediction display
-│   ├── analytics/
-│   │   ├── BatteryTypeComparison.tsx       → Degradation by battery type
-│   │   ├── DrivingStyleImpact.tsx          → Degradation by driving style
-│   │   ├── FastChargeAnalysis.tsx          → Fast-charge correlation chart
-│   │   └── TemperatureCorrelation.tsx      → Scatter plot: temp vs health
-│   ├── alerts/
-│   │   ├── AlertTable.tsx                  → Alerts list with severity
-│   │   └── AlertBadge.tsx                  → Severity badge
+│   ├── ui/                              → shadcn/ui primitives
+│   ├── dashboard/                       → Dashboard overview components
+│   ├── fleet/                           → Fleet table, vehicle detail components
+│   ├── analytics/                       → Analytics chart components
+│   ├── alerts/                          → Alert table components
+│   ├── upload/
+│   │   ├── FileDropzone.tsx             → Drag-and-drop upload zone
+│   │   ├── UploadProgress.tsx           → Per-file progress indicator
+│   │   ├── BatchUploadList.tsx          → Batch file queue
+│   │   ├── UploadResult.tsx             → Success/error summary after upload
+│   │   └── CsvPreview.tsx               → Preview parsed CSV rows before upload
 │   ├── auth/
-│   │   ├── LoginForm.tsx                   → Login form with Zod validation
-│   │   └── AuthGuard.tsx                   → Route protection wrapper
-│   └── motion/
-│       ├── FadeIn.tsx                      → Fade-in reveal wrapper
-│       └── SlideIn.tsx                     → Slide-in wrapper
+│   │   ├── LoginForm.tsx                → Login form with validation
+│   │   ├── RegisterForm.tsx             → Registration form
+│   │   └── AuthGuard.tsx                → Route protection (redirect if no session)
+│   └── motion/                          → FramerMotion wrappers
 ├── lib/
-│   ├── utils.ts                            → cn() utility
-│   ├── auth.ts                             → Mock auth (localStorage)
-│   ├── data.ts                             → Async data helpers (simulated API)
-│   └── predictions.ts                      → Health score & RUL formula
-├── data/
-│   ├── vehicles.ts                         → Vehicle telemetry data (transformed from CSV)
-│   ├── alerts.ts                           → Mock alerts data
-│   └── site.ts                             → Site-wide config
+│   ├── utils.ts                         → cn() utility
+│   ├── auth.ts                          → Auth.js config (authOptions)
+│   ├── prisma.ts                        → Prisma client singleton
+│   ├── db.ts                            → Database query helpers
+│   ├── csv.ts                           → CSV parse + validate (papaparse + Zod)
+│   ├── upload.ts                        → File handling, disk storage helpers
+│   └── predictions.ts                   → Health score & RUL formula
+├── data/                                → (removed — replaced by DB, kept for reference)
 ├── hooks/
-│   ├── useAuth.ts                          → Auth context hook
-│   ├── useVehicles.ts                      → TanStack Query wrapper for vehicle data
-│   └── useAlerts.ts                        → TanStack Query wrapper for alert data
-└── types/
-    └── index.ts                            → Shared types (Vehicle, Alert, etc.)
+│   ├── useAuth.ts                       → Session info hook (useSession wrapper)
+│   ├── useVehicles.ts                   → TanStack Query: vehicle list + single
+│   ├── useAlerts.ts                     → TanStack Query: alerts + mutations
+│   ├── useAnalytics.ts                  → TanStack Query: aggregated analytics
+│   ├── useUpload.ts                     → TanStack Query: upload mutations
+│   └── useUploadHistory.ts              → TanStack Query: upload history
+├── prisma/
+│   └── schema.prisma                    → Database schema
+├── types/
+│   └── index.ts                         → Shared types
+└── uploads/                             → Temporary CSV file storage (gitignored)
 ```
 
 ---
 
 ## System Boundaries
 
-| Folder         | Owns                                                                                     |
-| -------------- | ---------------------------------------------------------------------------------------- |
-| `app/`         | Routes and layout composition only. No data querying inline here.                        |
-| `app/(dashboard)/` | Dashboard route group — shares the sidebar/header layout. No auth-visible routes live outside this group. |
-| `components/`  | UI components and section composition. Data is received via props, not fetched directly.  |
-| `components/ui/` | shadcn/ui primitives. Only generic, unstyled, accessible base components live here.      |
-| `lib/`         | Pure utility functions, auth helpers, prediction formulas. No React, no side effects.     |
-| `data/`        | All static placeholder data. Components never reference these files directly — hooks mediate. |
-| `hooks/`       | TanStack Query wrappers that read from `data/` (simulating async API calls). Components call hooks, never `data/` directly. |
-| `types/`       | Shared TypeScript types.                                                                  |
+| Folder           | Owns                                                                                     |
+| ---------------- | ---------------------------------------------------------------------------------------- |
+| `app/`           | Routes and layout composition only. No data fetching logic inline (except RSC where needed). |
+| `app/(dashboard)/` | Dashboard route group — all authenticated routes share sidebar/header layout.            |
+| `app/api/`       | REST API route handlers — all DB access happens here. Return JSON.                       |
+| `components/`    | UI components. Receive data via props from page components.                              |
+| `components/ui/` | shadcn/ui primitives. Generic, unstyled, accessible.                                     |
+| `lib/`           | Pure utility functions, DB helpers, auth config, CSV parsing. No React, no side effects. |
+| `hooks/`         | TanStack Query wrappers — the bridge between API routes and components.                  |
+| `prisma/`        | DB schema, migrations.                                                                    |
+| `types/`         | Shared TypeScript types.                                                                 |
 
 ---
 
 ## Data Flow
 
 ```
-data/*.ts (static TS files)
-        ↓
-hooks/*.ts (TanStack Query — useQuery wrapping a simulated async delay)
-        ↓
-Components receive data via hook return value (data, isLoading, error)
-        ↓
-Child presentational components receive sliced data as props
-        ↓
-Charts render via Recharts in dedicated chart components
+User uploads CSV via /upload
+         ↓
+app/api/upload/route.ts — receives file as FormData (in-memory, no disk write)
+         ↓
+Parses with papaparse, validates each row with Zod schema
+         ↓
+CSV file object discarded after parsing — never stored
+         ↓
+Inserts valid rows into vehicles table (user_id scoped) via Prisma transaction
+         ↓
+Creates upload_history record with row count, error count, status
+         ↓
+Returns summary: inserted count, error rows (with line numbers)
+         ↓
+--- Subsequent page loads ---
+         ↓
+Component → hook (useVehicles) → TanStack Query → GET /api/vehicles?page=1&limit=50
+         ↓
+API route → auth check (getServerSession) → Prisma query (user_id filtered) → JSON response
 ```
 
-### Auth Flow
+### Auth Flow (Auth.js v5)
 
 ```
-User enters email/password on /login
-        ↓
-LoginForm validates with Zod schema
-        ↓
-lib/auth.ts stores session to localStorage ({ email, name, loggedInAt })
-        ↓
-AuthGuard reads localStorage, redirects to /login if no session
-        ↓
-Logout clears localStorage, redirects to /login
+User registers via /register
+         ↓
+POST /api/auth/register → creates user in DB (email + bcrypt hashed password)
+         ↓
+Redirect to /login
+         ↓
+User enters credentials on /login
+         ↓
+POST /api/auth/callback/credentials → Auth.js validates email/password
+         ↓
+Session created in DB (via Auth.js database adapter)
+         ↓
+NextAuth.js session cookie set
+         ↓
+AuthGuard (useSession) reads session, redirects to /login if unauthenticated
+         ↓
+Logout → POST /api/auth/signout → clears session from DB + cookie
 ```
 
-### Simulated API Pattern
+---
 
-```typescript
-// hooks/useVehicles.ts
-import { useQuery } from "@tanstack/react-query";
-import { getVehicles } from "@/lib/data";
+## Database Schema (Prisma)
 
-export function useVehicles() {
-  return useQuery({
-    queryKey: ["vehicles"],
-    queryFn: getVehicles, // lib/data.ts wraps a setTimeout delay
-  });
+```prisma
+// prisma/schema.prisma
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  passwordHash  String
+  name          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  vehicles      Vehicle[]
+  alerts        Alert[]
+  uploadHistory UploadHistory[]
+  accounts      Account[]      // Auth.js
+  sessions      Session[]     // Auth.js
+}
+
+model Vehicle {
+  id                  String   @id @default(cuid())
+  userId              String
+  vehicleId           String
+  vehicleModel        String
+  batteryType         String   // LFP | NMC | NCA
+  batteryCapacity     Float
+  vehicleAge          Int      // years
+  totalChargingCycle  Int
+  avgTempC            Float
+  fastChargeRatio     Float    // 0-1
+  avgDischargeRate    Float    // C-rate
+  drivingStyle        String   // gentle | moderate | aggressive
+  sohPercent          Float
+  createdAt           DateTime @default(now())
+
+  user    User         @relation(fields: [userId], references: [id])
+  alerts  Alert[]
+
+  @@unique([userId, vehicleId])
+  @@index([userId])
+}
+
+model Alert {
+  id          String   @id @default(cuid())
+  userId      String
+  vehicleId   String
+  severity    String   // critical | warning | info
+  alertType   String   // low_health | high_temp | fast_charge
+  description String
+  status      String   @default("unread") // unread | read | dismissed
+  createdAt   DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id])
+  vehicle Vehicle @relation(fields: [userId, vehicleId], references: [userId, vehicleId])
+
+  @@index([userId, status])
+}
+
+model UploadHistory {
+  id          String   @id @default(cuid())
+  userId      String
+  filename    String
+  fileSize    Int      // bytes
+  rowCount    Int
+  errorCount  Int
+  errors      Json?    // Array of { row: number, field: string, message: string }
+  status      String   // processing | completed | failed
+  createdAt   DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+}
+
+// Auth.js required models
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id])
 }
 ```
 
-```typescript
-// lib/data.ts
-import { vehicles } from "@/data/vehicles";
+---
 
-export async function getVehicles(): Promise<Vehicle[]> {
-  // Simulate network delay
-  await new Promise((r) => setTimeout(r, 300 + Math.random() * 200));
-  return vehicles;
-}
+## API Routes
 
-export async function getVehicleById(id: string): Promise<Vehicle | undefined> {
-  await new Promise((r) => setTimeout(r, 200));
-  return vehicles.find((v) => v.vehicle_id === id);
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | /api/auth/register | No | Create account |
+| GET/POST | /api/auth/[...nextauth] | Varies | Auth.js endpoints |
+| GET | /api/vehicles | Yes | Paginated vehicle list (query: page, limit, search, sort, filter) |
+| GET | /api/vehicles/[vehicleId] | Yes | Single vehicle detail |
+| GET | /api/alerts | Yes | Alerts list (query: severity, status, page, limit) |
+| PATCH | /api/alerts/[alertId] | Yes | Mark as read / dismiss |
+| GET | /api/analytics | Yes | Aggregated analytics data |
+| POST | /api/upload | Yes | Single CSV file upload (multipart) |
+| POST | /api/upload/batch | Yes | Multiple CSV files (multipart array) |
+| GET | /api/upload-history | Yes | Past upload records |
+
+### File Upload Contract
+
+```
+POST /api/upload
+Content-Type: multipart/form-data
+Body: { file: File (CSV) }
+
+Response 200:
+{
+  "uploadId": "ckl...",
+  "insertedCount": 950,
+  "errorCount": 3,
+  "errors": [
+    { "row": 12, "field": "battery_capacity", "message": "Invalid number" },
+    { "row": 45, "field": "vehicle_id", "message": "Required" },
+    { "row": 67, "field": "driving_style", "message": "Must be gentle, moderate, or aggressive" }
+  ],
+  "status": "completed"
 }
 ```
-
-This pattern means every data-consuming component already works with `isLoading`/`error` states before any real API exists. Swapping static data for a real fetch call requires changing only the `lib/data.ts` implementation — no component changes.
 
 ---
 
 ## Health Score & Prediction Formula
 
-Health score and remaining useful life are deterministic formulas in the MVP, designed to produce believable relative rankings:
+Health score and remaining useful life are deterministic formulas, designed to produce believable relative rankings:
 
 ```typescript
 // lib/predictions.ts
 
-export function calculateHealthScore(vehicle: Vehicle): number {
-  let score = 100;
-
-  // Cycle degradation: ~0.02% per cycle
-  score -= vehicle.total_charging_cycle * 0.02;
+export function calculateHealthScore(vehicle: {
+  sohPercent: number;
+  totalChargingCycle: number;
+  avgTempC: number;
+  fastChargeRatio: number;
+  avgDischargeRate: number;
+  drivingStyle: string;
+  batteryType: string;
+}): number {
+  let score = vehicle.sohPercent;
 
   // Temperature penalty: above 35°C accelerates degradation
-  if (vehicle.avg_temp_c > 35) {
-    score -= (vehicle.avg_temp_c - 35) * 0.5;
+  if (vehicle.avgTempC > 35) {
+    score -= (vehicle.avgTempC - 35) * 0.5;
   }
 
   // Fast-charge penalty: ratio > 0.6
-  if (vehicle.fast_charge_ratio > 0.6) {
-    score -= (vehicle.fast_charge_ratio - 0.6) * 15;
+  if (vehicle.fastChargeRatio > 0.6) {
+    score -= (vehicle.fastChargeRatio - 0.6) * 15;
   }
 
   // Discharge rate penalty: higher rates = more stress
-  if (vehicle.avg_discharge_rate > 1.5) {
-    score -= (vehicle.avg_discharge_rate - 1.5) * 8;
+  if (vehicle.avgDischargeRate > 1.5) {
+    score -= (vehicle.avgDischargeRate - 1.5) * 8;
   }
 
   // Driving style penalty
-  if (vehicle.driving_style === "aggressive") score -= 8;
-  if (vehicle.driving_style === "moderate") score -= 3;
+  if (vehicle.drivingStyle === "aggressive") score -= 8;
+  if (vehicle.drivingStyle === "moderate") score -= 3;
 
   // Battery type resilience factor
-  if (vehicle.battery_type === "LFP") score += 2;  // More resilient
-  if (vehicle.battery_type === "NCA") score -= 2;  // Less resilient
+  if (vehicle.batteryType === "LFP") score += 2;
+  if (vehicle.batteryType === "NCA") score -= 2;
 
   return Math.max(0, Math.min(100, Math.round(score)));
 }
 
-export function predictRemainingCycles(vehicle: Vehicle): number {
+export function predictRemainingCycles(vehicle: {
+  sohPercent: number;
+  totalChargingCycle: number;
+  vehicleAge: number;
+}): number {
   const health = calculateHealthScore(vehicle);
-  const cyclesPerYear = vehicle.total_charging_cycle / Math.max(1, vehicle.vehicle_age);
-  const degradationPerCycle = (100 - health) / Math.max(1, vehicle.total_charging_cycle);
-
-  // Estimate cycles until health reaches 60% (end of life threshold)
+  const cyclesPerYear = vehicle.totalChargingCycle / Math.max(1, vehicle.vehicleAge);
+  const degradationPerCycle = (100 - health) / Math.max(1, vehicle.totalChargingCycle);
   const cyclesToEOL = (health - 60) / Math.max(0.001, degradationPerCycle);
   return Math.max(0, Math.round(cyclesToEOL));
 }
 ```
+
+Note: SoH comes from the CSV (`soh_percent`), not calculated. Health score adjusts it for operational factors.
 
 ---
 
@@ -234,25 +392,31 @@ export function predictRemainingCycles(vehicle: Vehicle): number {
 ### Client vs Server
 
 - Pages and layout composition default to Server Components
-- Any component using TanStack Query, React state, browser APIs, or interactivity is a Client Component (`"use client"`)
-- shadcn/ui components are Client Components (they use Radix primitives with state)
-- Layout shell (sidebar/header) is a Client Component for the interactive parts, wrapping server content via `children`
+- API route handlers are server-side
+- Components using TanStack Query, React state, browser APIs, or interactivity are Client Components
+- shadcn/ui components are Client Components
+- Auth-related pages (login, register) are Client Components for form interactivity
 
-### Data Fetching Pattern
+### Data Fetching Pattern (Backend-connected)
 
 ```typescript
+// hooks/useVehicles.ts
 "use client";
 
-import { useVehicles } from "@/hooks/useVehicles";
-import { FleetTable } from "@/components/fleet/FleetTable";
+import { useQuery } from "@tanstack/react-query";
 
-export default function FleetPage() {
-  const { data: vehicles, isLoading, error } = useVehicles();
+export function useVehicles(params: { page: number; limit?: number; search?: string }) {
+  const searchParams = new URLSearchParams({
+    page: String(params.page),
+    limit: String(params.limit ?? 50),
+    ...(params.search && { search: params.search }),
+  });
 
-  if (isLoading) return <FleetTableSkeleton />;
-  if (error) return <ErrorState message={error.message} />;
-
-  return <FleetTable vehicles={vehicles} />;
+  return useQuery({
+    queryKey: ["vehicles", params],
+    queryFn: () =>
+      fetch(`/api/vehicles?${searchParams}`).then((r) => r.json()),
+  });
 }
 ```
 
@@ -262,19 +426,20 @@ export default function FleetPage() {
 // components/auth/AuthGuard.tsx
 "use client";
 
-import { useAuth } from "@/hooks/useAuth";
+import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { isAuthenticated } = useAuth();
+  const { data: session, status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
-    if (!isAuthenticated) router.replace("/login");
-  }, [isAuthenticated, router]);
+    if (status === "unauthenticated") router.replace("/login");
+  }, [status, router]);
 
-  if (!isAuthenticated) return null;
+  if (status === "loading") return null;
+  if (!session) return null;
 
   return <>{children}</>;
 }
@@ -286,7 +451,10 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 
 - Health score range: 0–100 (100 = perfect)
 - End-of-life threshold: score < 60 → "replace soon"
-- Alert severity: `critical` (< 60), `warning` (60–75), `info` (75–90)
-- Simulated API delay: 200–500ms
-- Session storage key: `battery-analytics-session`
-- Theme storage key: `battery-analytics-theme`
+- Alert severity: `critical` (< 60), `warning` (60–79), `info` (80–90)
+- Server pagination defaults: page 1, limit 50, max limit 200
+- CSV max file size: 10MB (single), 50MB total (batch)
+- Supported CSV columns must match Vehicle type
+- New user state: empty — no seed data, upload page is the entry point
+- CSV file handling: in-memory only — parsed via papaparse, file object discarded immediately after processing
+- Session storage key: `battery-analytics-theme` (theme only, auth uses Auth.js cookies)

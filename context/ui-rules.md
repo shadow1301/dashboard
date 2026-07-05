@@ -64,6 +64,16 @@ Apply both variable classes to `<html>`. Use `font-sans` for all UI text, `font-
 - Tables show loading skeleton rows while data is fetching
 - Empty tables show a centered muted message with an icon
 
+### Server-Side Pagination (Fleet Table)
+
+- Fleet table uses server-side pagination — API returns `{ data: Vehicle[], total: number, page: number, limit: number, totalPages: number }`
+- Pagination controls at the bottom: previous/next buttons, page number display, per-page selector (25/50/100)
+- Sort state sent as query param: `sort=healthScore&order=desc`
+- Filter state sent as query params: `search=`, `batteryType=`, `drivingStyle=`, `healthMin=`, `healthMax=`
+- URL search params synced with filter state for shareable/bookmarkable filtered views
+- Loading state: table body replaced with skeleton rows (same layout as data rows)
+- Empty page: show message with option to clear filters
+
 ### Fleet Table Columns
 
 | Column | Type | Sortable | Filterable |
@@ -158,6 +168,33 @@ Apply both variable classes to `<html>`. Use `font-sans` for all UI text, `font-
 - Submit button shows loading spinner while "authenticating" (simulated delay)
 - Submit is disabled while loading to prevent double-submit
 - Error summary above the form for server-level errors (wrong credentials, etc.)
+
+---
+
+## File Upload
+
+- Upload page centered layout with card container
+- Drag-and-drop zone supports `.csv` files only — show restriction text
+- Single file upload: dropzone → file selected → progress → result summary
+- Batch upload: dropzone accepts multiple files → queue displayed as list → upload all button → per-file progress → combined result
+- File validation on drop:
+  - Extension must be `.csv` — reject with error message if not
+  - File size ≤ 10MB (single), total ≤ 50MB (batch)
+  - Show error inline on the dropped file card
+- Upload progress: per-file progress bar with filename, row count (after parse), status indicator
+- CSV preview: after parsing (client-side), show first 5 rows in a mini-table before user confirms upload
+- Upload result:
+  - Success: green banner with inserted count, link to fleet
+  - Partial: amber banner with inserted count + error count, expandable error list
+  - Failure: red banner with error message
+- Drag-over state: dashed border turns primary blue, background tinted — immediate visual feedback
+
+### Upload History
+
+- Table displaying past uploads: filename, date, rows inserted, errors, status
+- Click a row to expand error details (if any)
+- Status badges match the notification banner colors
+- Empty state: "No uploads yet" with a link to the upload page
 
 ---
 

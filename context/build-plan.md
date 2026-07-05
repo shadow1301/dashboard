@@ -288,6 +288,166 @@ Audit every page at all breakpoints.
 
 ---
 
+---
+
+## Phase 7 — Backend (Database, Auth, CSV Upload)
+
+### 15 Database Setup — PostgreSQL + Prisma
+
+Set up the persistent data layer.
+
+**Logic:**
+
+- Provision PostgreSQL database on Neon (serverless, generous free tier)
+- Install `prisma`, `@prisma/client`, `bcryptjs`, `next-auth`, `@auth/prisma-adapter`, `papaparse`
+- Create `lib/prisma.ts` — singleton client
+- Define `prisma/schema.prisma` with models: User, Vehicle, Alert, UploadHistory, Account, Session
+- Run `npx prisma migrate dev` to create initial schema
+- No seed script — new users see empty state, upload is the entry point
+- Add `.env` file with `DATABASE_URL` (Neon connection string), `NEXTAUTH_SECRET`, `NEXTAUTH_URL`
+
+**Dependencies:** prisma, @prisma/client, bcryptjs
+**Verification:** `npx prisma db push` succeeds, `npx prisma studio` shows empty tables.
+
+---
+
+### 16 Auth System — NextAuth.js v5
+
+Replace mock auth with real database-backed authentication.
+
+**Logic:**
+
+- Create `lib/auth.ts` — Auth.js config with Credentials provider, PrismaAdapter, bcrypt password verification
+- Create `app/api/auth/[...nextauth]/route.ts` — API route handler
+- Create `app/register/page.tsx` + `RegisterForm.tsx` — registration page with Zod validation
+- Update `LoginForm.tsx` — POST to `/api/auth/callback/credentials` instead of localStorage
+- Update `AuthGuard.tsx` — use `useSession()` from next-auth/react instead of custom context
+- Update `lib/providers.tsx` — wrap with `<SessionProvider>`
+- Add `useSession` hook everywhere session info is needed
+- Remove mock `lib/auth.ts`, `hooks/useAuth.ts` (localStorage-based) — replaced by Auth.js
+
+**Dependencies:** next-auth, @auth/prisma-adapter, bcryptjs
+**Verification:** Register → login → protected route → refresh stays logged in → logout → redirect to login. Wrong credentials rejected. No localStorage auth artifacts remain.
+
+---
+
+### 17 API Routes — Vehicles + Alerts + Analytics
+
+Build the REST API layer for all data access.
+
+**Logic:**
+
+- `app/api/vehicles/route.ts` — GET paginated, filtered, sortable vehicle list (scoped to user)
+- `app/api/vehicles/[vehicleId]/route.ts` — GET single vehicle detail
+- `app/api/alerts/route.ts` — GET paginated alerts with severity/status filters
+- `app/api/alerts/[alertId]/route.ts` — PATCH mark as read / dismiss / delete
+- `app/api/analytics/route.ts` — GET aggregated stats (avg health, distribution, at-risk count, etc.)
+- All routes: check `getServerSession(authOptions)` first, scope queries to `userId`
+- Update hooks (`useVehicles.ts`, `useAlerts.ts`) to call real API routes instead of static data
+- Remove `lib/data.ts` (simulated async wrappers) — no longer needed
+- Remove `data/` folder references from hooks (static files kept for reference)
+
+**Dependencies:** None new
+**Verification:** API routes return correct JSON. Pagination works. Filters work. Unauthorized requests return 401. Data is isolated per user.
+
+---
+
+### 18 CSV Upload — Single File
+
+Build the CSV upload flow: front-end dropzone → back-end parse → insert to DB.
+
+**UI:**
+
+- `components/upload/FileDropzone.tsx` — drag-and-drop zone, file validation
+- `components/upload/CsvPreview.tsx` — show first 5 rows before confirming
+- `components/upload/UploadProgress.tsx` — progress bar during processing
+- `components/upload/UploadResult.tsx` — success/error summary
+- `app/(dashboard)/upload/page.tsx` — upload page
+
+**Logic:**
+
+- `app/api/upload/route.ts` — POST multipart form, parse CSV with papaparse, validate with Zod, insert to DB via Prisma transaction
+- Create `lib/csv.ts` — CSV parsing + Zod validation helpers
+- Server-side: validate file extension, file size (10MB max), parse headers, validate each row
+- If errors: return error array with row numbers; valid rows inserted, invalid rows reported
+- Create `UploadHistory` record after processing
+- Auto-generate alerts based on SoH thresholds after successful upload
+- Create `hooks/useUpload.ts` — TanStack Query mutation for upload
+- Update sidebar nav: add "Upload" link
+
+- CSV file processed in-memory only — parsed via papaparse `file.text()`, file object discarded after processing
+- No disk write, no S3/R2 upload — CSV data lives only in the DB after successful parse
+
+**Dependencies:** papaparse (Next.js 16 built-in `formData()` for multipart parsing)
+**Verification:** Upload valid CSV → success summary + data appears in fleet. Upload invalid CSV → error list with row numbers. Upload wrong file type → rejected. Upload >10MB → rejected. Data scoped to user.
+
+---
+
+### 19 CSV Upload — Batch + History
+
+Support multiple file upload and upload history tracking.
+
+**UI:**
+
+- `components/upload/BatchUploadList.tsx` — file queue with per-file progress
+- Update `FileDropzone` to accept multiple files when in batch mode
+- `app/(dashboard)/upload/history/page.tsx` — upload history table
+- `hooks/useUploadHistory.ts` — TanStack Query for history
+
+**Logic:**
+
+- `app/api/upload/batch/route.ts` — POST multiple files, process sequentially, return combined summary
+- Client-side: queue files, call batch endpoint, poll or stream progress per file
+- `app/api/upload-history/route.ts` — GET paginated upload history for user
+- History shows: filename, date, row count, error count, status (processing/completed/failed)
+- Expandable row shows per-row errors if any
+
+**Dependencies:** None new
+**Verification:** Upload 3 CSV files → all appear in history. Batch with one failing file → partial success with errors. History page shows all uploads with correct status.
+
+---
+
+### 20 Migration — Hooks from Static to API
+
+Update all existing hooks to fetch from API routes instead of static data.
+
+**Logic:**
+
+- `hooks/useVehicles.ts` — replace `getVehicles()` from `lib/data.ts` with `fetch("/api/vehicles?...")`
+- `hooks/useAlerts.ts` — replace mock data with `fetch("/api/alerts?...")`
+- `hooks/useVehicle.ts` — replace with `fetch("/api/vehicles/${id}")`
+- Add `useAnalytics.ts` — fetch from `/api/analytics`
+- Update all page components to use new hook signatures (pagination params, etc.)
+- Update `app/(dashboard)/dashboard/page.tsx` to aggregate from API
+- Remove `lib/data.ts`, `data/vehicles.ts`, `data/alerts.ts` (keep as reference, not imported)
+- Add/update `lib/predictions.ts` — no changes needed, formula is already backend-agnostic
+
+**Verification:** Every page loads data from API with correct loading/error/success states. No remaining imports from `data/` in any component or hook.
+
+---
+
+### 21 Settings Page — Account Management
+
+Basic user settings page.
+
+**UI:**
+
+- `app/(dashboard)/settings/page.tsx` — settings page
+- Display user email, name, account creation date
+- Change password form (current password + new password)
+- Danger zone: delete account (with confirmation dialog)
+
+**Logic:**
+
+- `app/api/settings/route.ts` — GET user profile, PATCH update profile
+- `app/api/settings/password/route.ts` — POST change password (verify current, hash new)
+- `app/api/settings/account/route.ts` — DELETE account (cascade delete all user data)
+
+**Dependencies:** None new
+**Verification:** Profile displays correctly. Password change works. Account deletion removes all user data.
+
+---
+
 ## Feature Count
 
 | Phase | Features |
@@ -298,4 +458,5 @@ Audit every page at all breakpoints.
 | Phase 4 — Fleet Pages | 2 |
 | Phase 5 — Analytics & Alerts | 2 |
 | Phase 6 — Polish & Responsive | 4 |
-| **Total** | **14** |
+| Phase 7 — Backend | 7 |
+| **Total** | **21** |

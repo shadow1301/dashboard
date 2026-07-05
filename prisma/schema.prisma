@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  name         String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  vehicles      Vehicle[]
+  alerts        Alert[]
+  uploadHistory UploadHistory[]
+  accounts      Account[]
+  sessions      Session[]
+}
+
+model Vehicle {
+  id                 String   @id @default(cuid())
+  userId             String
+  vehicleId          String
+  vehicleModel       String
+  batteryType        String
+  batteryCapacity    Float
+  vehicleAge         Int
+  totalChargingCycle Int
+  avgTempC           Float
+  fastChargeRatio    Float
+  avgDischargeRate   Float
+  drivingStyle       String
+  sohPercent         Float
+  createdAt          DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  alerts  Alert[]
+
+  @@unique([userId, vehicleId])
+  @@index([userId])
+}
+
+model Alert {
+  id          String   @id @default(cuid())
+  userId      String
+  vehicleId   String
+  severity    String
+  alertType   String
+  description String
+  status      String   @default("unread")
+  createdAt   DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vehicle Vehicle @relation(fields: [userId, vehicleId], references: [userId, vehicleId], onDelete: Cascade)
+
+  @@index([userId, status])
+  @@index([userId, severity])
+}
+
+model UploadHistory {
+  id         String   @id @default(cuid())
+  userId     String
+  filename   String
+  fileSize   Int
+  rowCount   Int
+  errorCount Int
+  errors     Json?
+  status     String
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refreshToken      String?
+  accessToken       String?
+  expiresAt         Int?
+  tokenType         String?
+  scope             String?
+  idToken           String?
+  sessionState      String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}

@@ -279,6 +279,37 @@ body {
 - focus: `ring-1 ring-primary border-primary`
 - placeholder: `text-foreground-faint`
 - padding: `px-3 py-2`
+- error state: `border-error ring-error/30`
+- disabled state: `opacity-50 cursor-not-allowed`
+
+### File Dropzone
+
+| State | Class |
+|-------|-------|
+| Default | `border-2 border-dashed border-border-strong rounded-lg p-8 bg-surface` |
+| Drag active | `border-primary bg-primary/5` |
+| Has file | `border-health-good` |
+| Error | `border-error bg-error/5` |
+| Text | `text-foreground-muted text-sm text-center` |
+| Icon | `text-foreground-faint mb-2` |
+
+### Progress Bar
+
+- Background track: `bg-surface-raised rounded-full h-2`
+- Fill (default): `bg-primary rounded-full h-2 transition-all`
+- Fill (success): `bg-health-good rounded-full h-2`
+- Fill (error): `bg-error rounded-full h-2`
+- Label: `text-xs text-foreground-muted`
+
+### Toast / Notification Banner
+
+| Type | Class |
+|------|-------|
+| Success | `bg-health-good/10 border border-health-good/30 text-health-good` |
+| Error | `bg-error/10 border border-error/30 text-error` |
+| Warning | `bg-warning/10 border border-warning/30 text-warning` |
+| Info | `bg-info/10 border border-info/30 text-info` |
+| Shape | `rounded-lg px-4 py-3 text-sm` |
 
 ### Badge
 

@@ -37,9 +37,92 @@ Implementation rules and conventions for the entire project. The AI agent must f
   - shadcn/ui primitives (they use Radix with state)
   - Interactive behavior (sorting, filtering, toggles)
 - Never add `"use client"` to layout files unless absolutely required
-- Data fetching is simulated through TanStack Query hooks that wrap async functions with artificial delays — never fetch real APIs in MVP
-- Route handlers (`app/api/`) are empty in MVP — added only when a real backend is introduced
-- Dynamic routes (`/fleet/[vehicleId]`) use `generateStaticParams` where feasible so all pages are pre-rendered at build time
+- API routes (`app/api/`) handle all database access — never import Prisma or DB directly from page components
+- Dynamic routes that use `params` must await it (`params` is a Promise in Next.js 16)
+
+---
+
+## API Route Standards
+
+- All API route handlers validate authentication via `getServerSession(authOptions)` first
+- Return consistent JSON response shape: `{ data?, error?, total?, page?, limit?, totalPages? }`
+- Error responses: `{ error: string, code?: string }` with appropriate HTTP status codes
+- Use Zod for request body validation in POST/PATCH handlers
+- Pagination query params: `page` (default 1), `limit` (default 50, max 200)
+- Sort query params: `sort` (field name), `order` (asc|desc)
+- Filter query params: freeform per-route (documented in architecture.md)
+- Never expose raw database errors to clients — map to user-friendly messages
+- Use `try/catch` in route handlers and return 500 for unexpected errors
+
+```typescript
+// Example route handler pattern
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+
+export async function GET(request: NextRequest) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { searchParams } = new URL(request.url);
+  const page = Math.max(1, Number(searchParams.get("page")) || 1);
+  const limit = Math.min(200, Math.max(1, Number(searchParams.get("limit")) || 50));
+
+  try {
+    const [data, total] = await Promise.all([
+      prisma.vehicle.findMany({
+        where: { userId: session.user.id },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: { createdAt: "desc" },
+      }),
+      prisma.vehicle.count({ where: { userId: session.user.id } }),
+    ]);
+
+    return NextResponse.json({
+      data,
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+    });
+  } catch (error) {
+    console.error("Failed to fetch vehicles:", error);
+    return NextResponse.json({ error: "Failed to fetch vehicles" }, { status: 500 });
+  }
+}
+```
+
+---
+
+## Database Standards
+
+- All database access goes through Prisma — never raw SQL
+- Prisma client is instantiated as a singleton in `lib/prisma.ts` (prevents hot-reload connection exhaustion)
+- Migrations are run via `npx prisma migrate dev` during development, `npx prisma migrate deploy` in production
+- Schema changes are tracked in the `prisma/migrations/` directory (committed to git)
+- No seed data — new users see empty state; CSV upload is the data entry point
+- All queries scope to `userId` for data isolation — never return data from other users
+- Use transactions (`prisma.$transaction`) for multi-step operations (e.g., CSV upload + alert generation)
+- Index all foreign keys and frequently-queried columns (userId, status, severity)
+
+---
+
+## Auth Standards
+
+- Auth.js v5 (NextAuth.js) with Credentials provider — email/password via database adapter
+- Passwords hashed with bcryptjs (10 salt rounds)
+- Session stored in database (via Auth.js adapter) — not JWT
+- Session checked via `getServerSession(authOptions)` in API routes
+- Client-side session via `useSession()` from `next-auth/react`
+- Registration creates user via `prisma.user.create()` — separate from Auth.js auth flow
+- Protected routes use AuthGuard component that wraps the dashboard layout
+- API routes check session at the start of every handler
+- Never store raw passwords, never log session tokens, never expose user IDs in error messages
 
 ---
 
@@ -188,6 +271,7 @@ Never install a new package without a clear reason. Before installing anything c
 
 **Approved dependencies for this project:**
 
+### Frontend
 - `next` — framework
 - `react` / `react-dom` — UI library
 - `typescript` — language
@@ -198,8 +282,17 @@ Never install a new package without a clear reason. Before installing anything c
 - `clsx` / `tailwind-merge` — class merging (`cn()` utility)
 - `zod` — form validation
 - `framer-motion` — layout transitions and micro-interactions
+- `papaparse` — client-side CSV preview parsing
 - shadcn/ui component dependencies (Radix primitives, etc.)
 - `@next/font` (built-in) — fonts
+
+### Backend
+- `next-auth` (v5) — authentication
+- `@prisma/client` — database ORM
+- `prisma` (dev) — schema management, migrations
+- `bcryptjs` — password hashing
+- `papaparse` — server-side CSV parsing (in-memory, no disk write)
+- `postgresql` (platform add-on) — database
 
 Do not install any other packages without updating this list first. In particular, do not install a second chart library alongside Recharts, or a CSS framework alongside Tailwind.
 
@@ -211,3 +304,7 @@ Do not install any other packages without updating this list first. In particula
 - Every state (loading, error, empty, success) must be manually verified for every data-driven component
 - Test at minimum these breakpoints: 390px, 768px, 1440px, 1920px
 - Test both themes on every page
+- API routes tested manually via browser or curl during development
+- CSV upload tested with valid data, malformed data, missing columns, oversized files
+- Auth flows tested: registration → login → protected route → logout → redirect
+- Multi-tenant isolation verified by creating two accounts and confirming no data overlap
