@@ -32,3 +32,27 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     soh_percent: vehicle.sohPercent,
   });
 }
+
+export async function DELETE(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { id } = await params;
+
+  const vehicle = await prisma.vehicle.findFirst({
+    where: { vehicleId: id, userId: session.user.id },
+  });
+
+  if (!vehicle) {
+    return NextResponse.json({ error: "Vehicle not found" }, { status: 404 });
+  }
+
+  await prisma.$transaction([
+    prisma.alert.deleteMany({ where: { vehicleId: id, userId: session.user.id } }),
+    prisma.vehicle.deleteMany({ where: { vehicleId: id, userId: session.user.id } }),
+  ]);
+
+  return NextResponse.json({ success: true });
+}

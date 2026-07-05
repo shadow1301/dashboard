@@ -12,6 +12,7 @@ const pageTitles: Record<string, string> = {
   "/analytics": "Analytics",
   "/alerts": "Alerts",
   "/upload": "Upload Data",
+  "/upload-history": "Upload History",
   "/settings": "Settings",
 };
 

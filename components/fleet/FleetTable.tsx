@@ -1,12 +1,32 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, Fragment } from "react";
 import { useRouter } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, Pencil, Trash2 } from "lucide-react";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import type { Vehicle, SortDirection } from "@/types";
 import { calculateHealthScore } from "@/lib/predictions";
 
@@ -36,7 +56,11 @@ function getHealthBadge(score: number) {
 export function FleetTable({ vehicles, isLoading }: Props) {
   const [sortKey, setSortKey] = useState<SortKey>("vehicle_id");
   const [sortDir, setSortDir] = useState<SortDirection>("asc");
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 20;
   const router = useRouter();
+  const queryClient = useQueryClient();
 
   const sorted = useMemo(() => {
     if (!vehicles?.length) return [];
@@ -52,6 +76,9 @@ export function FleetTable({ vehicles, isLoading }: Props) {
     return sorted;
   }, [vehicles, sortKey, sortDir]);
 
+  const totalPages = Math.max(1, Math.ceil((sorted.length || 0) / pageSize));
+  const displayed = sorted.slice((page - 1) * pageSize, page * pageSize);
+
   const handleSort = (key: SortKey) => {
     if (sortKey === key) {
       setSortDir(sortDir === "asc" ? "desc" : sortDir === "desc" ? null : "asc");
@@ -59,17 +86,33 @@ export function FleetTable({ vehicles, isLoading }: Props) {
       setSortKey(key);
       setSortDir("asc");
     }
+    setPage(1);
+  };
+
+  const handleDelete = async (vehicleId: string) => {
+    setDeletingId(vehicleId);
+    const res = await fetch(`/api/vehicles/${vehicleId}`, { method: "DELETE" });
+    if (res.ok) {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+      queryClient.invalidateQueries({ queryKey: ["alerts"] });
+      queryClient.invalidateQueries({ queryKey: ["vehicleCount"] });
+      toast.success("Vehicle deleted");
+    } else {
+      toast.error("Failed to delete vehicle");
+    }
+    setDeletingId(null);
   };
 
   if (isLoading) {
     return (
-      <div className="border border-border rounded-lg overflow-hidden">
+      <div className="border border-border rounded-lg overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
               {columns.map((col) => (
                 <TableHead key={col.label}><Skeleton className="h-4 w-16" /></TableHead>
               ))}
+              <TableHead><Skeleton className="h-4 w-12" /></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -78,6 +121,7 @@ export function FleetTable({ vehicles, isLoading }: Props) {
                 {columns.map((col) => (
                   <TableCell key={col.label}><Skeleton className="h-4 w-20" /></TableCell>
                 ))}
+                <TableCell><Skeleton className="h-4 w-12" /></TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -95,7 +139,7 @@ export function FleetTable({ vehicles, isLoading }: Props) {
   }
 
   return (
-    <div className="border border-border rounded-lg overflow-hidden">
+    <div className="border border-border rounded-lg overflow-x-auto">
       <Table>
         <TableHeader>
           <TableRow>
@@ -117,10 +161,11 @@ export function FleetTable({ vehicles, isLoading }: Props) {
                 </div>
               </TableHead>
             ))}
+            <TableHead className="w-20">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
-          {sorted.map((v) => {
+          {displayed.map((v) => {
             const health = calculateHealthScore(v);
             const badge = getHealthBadge(health);
             return (
@@ -142,13 +187,91 @@ export function FleetTable({ vehicles, isLoading }: Props) {
                     {badge.label}
                   </Badge>
                 </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      variant="ghost"
+                      size="icon-sm"
+                      onClick={() => router.push(`/fleet/${v.vehicle_id}?edit=true`)}
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Dialog>
+                      <DialogTrigger
+                        render={
+                          <Button variant="ghost" size="icon-sm" className="hover:text-error">
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        }
+                      />
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Delete vehicle?</DialogTitle>
+                          <DialogDescription>
+                            Remove {v.vehicle_id} ({v.vehicle_model}) and its alerts. This cannot be undone.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                          <Button
+                            variant="destructive"
+                            disabled={deletingId === v.vehicle_id}
+                            onClick={() => handleDelete(v.vehicle_id)}
+                          >
+                            {deletingId === v.vehicle_id ? "Deleting..." : "Delete"}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
+                </TableCell>
               </TableRow>
             );
           })}
         </TableBody>
       </Table>
-      <div className="px-4 py-2 text-xs text-foreground-faint border-t border-border">
-        Showing {sorted.length} of {vehicles.length} vehicles
+      <div className="flex items-center justify-between px-4 py-2 border-t border-border">
+        <span className="text-xs text-foreground-faint">
+          Showing {displayed.length} of {sorted.length} vehicles
+        </span>
+        {totalPages > 1 && (
+          <Pagination className="w-auto mx-0">
+            <PaginationContent>
+              <PaginationItem>
+                <PaginationPrevious
+                  text="Prev"
+                  onClick={() => setPage((p) => Math.max(1, p - 1))}
+                  className={cn(page <= 1 && "pointer-events-none opacity-50")}
+                />
+              </PaginationItem>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                .map((p, idx, arr) => (
+                  <Fragment key={p}>
+                    {idx > 0 && arr[idx - 1] !== p - 1 && (
+                      <PaginationItem><PaginationEllipsis /></PaginationItem>
+                    )}
+                    <PaginationItem>
+                      <Button
+                        variant={p === page ? "outline" : "ghost"}
+                        size="icon-sm"
+                        className="size-8 text-xs"
+                        onClick={() => setPage(p)}
+                      >
+                        {p}
+                      </Button>
+                    </PaginationItem>
+                  </Fragment>
+                ))}
+              <PaginationItem>
+                <PaginationNext
+                  text="Next"
+                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                  className={cn(page >= totalPages && "pointer-events-none opacity-50")}
+                />
+              </PaginationItem>
+            </PaginationContent>
+          </Pagination>
+        )}
       </div>
     </div>
   );

@@ -6,9 +6,9 @@ Update this file after every completed feature. Any AI agent reading this should
 
 ## Current Status
 
-**Phase:** Phase 7 — Backend complete
-**Last completed:** API routes, hooks migration, CSV upload with full pipeline, settings page, empty states
-**Next:** Phase 8 — Remove static data / generateStaticParams dependency, UI polish
+**Phase:** Phase 8 — Cleanup & Polish complete
+**Last completed:** Static data removal, alert generation, edit/delete vehicles, upload history page, UI polish
+**Next:** Maintenance / feature requests
 
 ---
 

@@ -3,13 +3,15 @@
 import { useMemo } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import { useVehicles } from "@/hooks/useVehicles";
 import { useAlerts } from "@/hooks/useAlerts";
 import { StatCard, StatCardSkeleton } from "@/components/dashboard/StatCard";
-import { HealthDistributionChart } from "@/components/dashboard/HealthDistributionChart";
 import { RecentAlerts } from "@/components/dashboard/RecentAlerts";
 import { calculateHealthScore } from "@/lib/predictions";
 import { Truck, AlertTriangle, Activity, Battery, Upload } from "lucide-react";
+
+const HealthDistributionChart = dynamic(() => import("@/components/dashboard/HealthDistributionChart").then((m) => m.HealthDistributionChart), { ssr: false });
 
 export default function DashboardPage() {
   const { data: vehicles, isLoading: vLoading, error: vError } = useVehicles();

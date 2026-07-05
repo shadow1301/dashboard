@@ -72,8 +72,53 @@ export async function POST(request: Request) {
 
         mapped.userId = session.user.id;
 
-        await prisma.vehicle.create({ data: mapped as any });
+        const vehicle = await prisma.vehicle.create({ data: mapped as any });
         successCount++;
+
+        const soh = vehicle.sohPercent;
+        const alertsToCreate: { userId: string; vehicleId: string; severity: string; alertType: string; description: string }[] = [];
+
+        if (soh < 60) {
+          alertsToCreate.push({
+            userId: session.user.id!,
+            vehicleId: vehicle.vehicleId,
+            severity: "critical",
+            alertType: "health_critical",
+            description: `${vehicle.vehicleModel} (${vehicle.vehicleId}) battery health critically low at ${soh}%`,
+          });
+        } else if (soh < 80) {
+          alertsToCreate.push({
+            userId: session.user.id!,
+            vehicleId: vehicle.vehicleId,
+            severity: "warning",
+            alertType: "health_warning",
+            description: `${vehicle.vehicleModel} (${vehicle.vehicleId}) battery health degraded to ${soh}%`,
+          });
+        }
+
+        if (vehicle.avgTempC > 35) {
+          alertsToCreate.push({
+            userId: session.user.id!,
+            vehicleId: vehicle.vehicleId,
+            severity: "warning",
+            alertType: "temperature_high",
+            description: `${vehicle.vehicleModel} (${vehicle.vehicleId}) average temperature ${vehicle.avgTempC}°C exceeds recommended range`,
+          });
+        }
+
+        if (vehicle.fastChargeRatio > 0.8) {
+          alertsToCreate.push({
+            userId: session.user.id!,
+            vehicleId: vehicle.vehicleId,
+            severity: "info",
+            alertType: "fast_charge_high",
+            description: `${vehicle.vehicleModel} (${vehicle.vehicleId}) fast-charge ratio at ${(vehicle.fastChargeRatio * 100).toFixed(0)}% may accelerate degradation`,
+          });
+        }
+
+        if (alertsToCreate.length > 0) {
+          await prisma.alert.createMany({ data: alertsToCreate });
+        }
       } catch {
         errorCount++;
       }

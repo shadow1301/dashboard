@@ -1,14 +1,23 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Fragment } from "react";
 import Link from "next/link";
+import { toast } from "sonner";
 import { useAlerts } from "@/hooks/useAlerts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationPrevious,
+  PaginationNext,
+  PaginationEllipsis,
+} from "@/components/ui/pagination";
+import { cn } from "@/lib/utils";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
 import { AlertCircle, AlertTriangle, Info, CheckCircle, X } from "lucide-react";
 import type { AlertSeverity, AlertStatus } from "@/types";
 
@@ -29,6 +38,8 @@ export default function AlertsPage() {
   const [severityFilter, setSeverityFilter] = useState<AlertSeverity | "all">("all");
   const [statusFilter, setStatusFilter] = useState<AlertStatus | "all">("all");
   const [localAlerts, setLocalAlerts] = useState<typeof alerts | null>(null);
+  const [page, setPage] = useState(1);
+  const pageSize = 15;
 
   const displayAlerts = localAlerts || alerts;
 
@@ -41,16 +52,22 @@ export default function AlertsPage() {
     });
   }, [displayAlerts, severityFilter, statusFilter]);
 
-  const markAsRead = (id: string) => {
-    setLocalAlerts((prev) =>
-      (prev || alerts || []).map((a) => (a.id === id ? { ...a, status: "read" as const } : a)),
-    );
-  };
+  const totalPages = Math.max(1, Math.ceil((filtered.length || 0) / pageSize));
+  const displayed = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  const dismiss = (id: string) => {
+  const updateAlertStatus = async (id: string, status: "read" | "dismissed") => {
     setLocalAlerts((prev) =>
-      (prev || alerts || []).map((a) => (a.id === id ? { ...a, status: "dismissed" as const } : a)),
+      (prev || alerts || []).map((a) => (a.id === id ? { ...a, status } : a)),
     );
+    const res = await fetch(`/api/alerts/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status }),
+    });
+    if (!res.ok) {
+      setLocalAlerts(null);
+      toast.error("Failed to update alert");
+    }
   };
 
   if (error) {
@@ -65,7 +82,7 @@ export default function AlertsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-3">
-        <Select value={severityFilter} onValueChange={(v) => setSeverityFilter(v as AlertSeverity | "all")}>
+        <Select value={severityFilter} onValueChange={(v) => { setSeverityFilter(v as AlertSeverity | "all"); setPage(1); }}>
           <SelectTrigger className="h-9 w-[140px] text-sm">
             <SelectValue placeholder="Severity" />
           </SelectTrigger>
@@ -76,7 +93,7 @@ export default function AlertsPage() {
             <SelectItem value="info">Info</SelectItem>
           </SelectContent>
         </Select>
-        <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as AlertStatus | "all")}>
+        <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v as AlertStatus | "all"); setPage(1); }}>
           <SelectTrigger className="h-9 w-[130px] text-sm">
             <SelectValue placeholder="Status" />
           </SelectTrigger>
@@ -90,7 +107,7 @@ export default function AlertsPage() {
       </div>
 
       {isLoading ? (
-        <div className="border border-border rounded-lg overflow-hidden">
+        <div className="border border-border rounded-lg overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -115,7 +132,7 @@ export default function AlertsPage() {
           No alerts match your filters.
         </div>
       ) : (
-        <div className="border border-border rounded-lg overflow-hidden">
+        <div className="border border-border rounded-lg overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
@@ -128,7 +145,7 @@ export default function AlertsPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((alert) => {
+              {displayed.map((alert) => {
                 const config = severityConfig[alert.severity];
                 const Icon = severityIcon[alert.severity];
                 return (
@@ -154,12 +171,12 @@ export default function AlertsPage() {
                     <TableCell>
                       <div className="flex items-center gap-1">
                         {alert.status === "unread" && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => markAsRead(alert.id)} title="Mark as read">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateAlertStatus(alert.id, "read")} title="Mark as read">
                             <CheckCircle size={14} />
                           </Button>
                         )}
                         {alert.status !== "dismissed" && (
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => dismiss(alert.id)} title="Dismiss">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => updateAlertStatus(alert.id, "dismissed")} title="Dismiss">
                             <X size={14} />
                           </Button>
                         )}
@@ -170,8 +187,49 @@ export default function AlertsPage() {
               })}
             </TableBody>
           </Table>
-          <div className="px-4 py-2 text-xs text-foreground-faint border-t border-border">
-            Showing {filtered.length} of {displayAlerts?.length || 0} alerts
+          <div className="flex items-center justify-between px-4 py-2 border-t border-border">
+            <span className="text-xs text-foreground-faint">
+              Showing {displayed.length} of {filtered.length} alerts
+            </span>
+            {totalPages > 1 && (
+              <Pagination className="w-auto mx-0">
+                <PaginationContent>
+                  <PaginationItem>
+                    <PaginationPrevious
+                      text="Prev"
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      className={cn(page <= 1 && "pointer-events-none opacity-50")}
+                    />
+                  </PaginationItem>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                    .map((p, idx, arr) => (
+                      <Fragment key={p}>
+                        {idx > 0 && arr[idx - 1] !== p - 1 && (
+                          <PaginationItem><PaginationEllipsis /></PaginationItem>
+                        )}
+                        <PaginationItem>
+                          <Button
+                            variant={p === page ? "outline" : "ghost"}
+                            size="icon-sm"
+                            className="size-8 text-xs"
+                            onClick={() => setPage(p)}
+                          >
+                            {p}
+                          </Button>
+                        </PaginationItem>
+                      </Fragment>
+                    ))}
+                  <PaginationItem>
+                    <PaginationNext
+                      text="Next"
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      className={cn(page >= totalPages && "pointer-events-none opacity-50")}
+                    />
+                  </PaginationItem>
+                </PaginationContent>
+              </Pagination>
+            )}
           </div>
         </div>
       )}

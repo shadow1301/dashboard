@@ -1,6 +1,7 @@
 "use client";
 
 import { useVehicles } from "@/hooks/useVehicles";
+import { FleetInsights } from "@/components/analytics/FleetInsights";
 import { BatteryTypeComparison } from "@/components/analytics/BatteryTypeComparison";
 import { DrivingStyleImpact } from "@/components/analytics/DrivingStyleImpact";
 import { TemperatureCorrelation } from "@/components/analytics/TemperatureCorrelation";
@@ -19,6 +20,7 @@ export default function AnalyticsPage() {
 
   return (
     <div className="space-y-6">
+      <FleetInsights vehicles={vehicles} isLoading={isLoading} />
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <BatteryTypeComparison vehicles={vehicles} isLoading={isLoading} />
         <DrivingStyleImpact vehicles={vehicles} isLoading={isLoading} />

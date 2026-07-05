@@ -8,6 +8,7 @@ export const siteConfig = {
     { label: "Fleet", href: "/fleet", icon: "Truck" },
     { label: "Analytics", href: "/analytics", icon: "BarChart3" },
     { label: "Upload", href: "/upload", icon: "Upload" },
+    { label: "Upload History", href: "/upload-history", icon: "History" },
     { label: "Alerts", href: "/alerts", icon: "Bell" },
     { label: "Settings", href: "/settings", icon: "Settings" },
   ],

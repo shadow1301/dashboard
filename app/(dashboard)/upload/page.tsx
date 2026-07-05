@@ -3,6 +3,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogContent,
@@ -137,6 +138,7 @@ export default function UploadPage() {
       queryClient.invalidateQueries({ queryKey: ["alerts"] });
       queryClient.invalidateQueries({ queryKey: ["vehicleCount"] });
 
+      toast.success(`${data.count ?? totalRows} vehicles imported`);
       setStatus("confirm");
     } catch (err) {
       if (cancelTimerRef.current) clearTimeout(cancelTimerRef.current);
@@ -147,7 +149,9 @@ export default function UploadPage() {
         return;
       }
 
-      setError(err instanceof Error ? err.message : "Upload failed");
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      toast.error(msg);
+      setError(msg);
       setStatus("preview");
     }
   };

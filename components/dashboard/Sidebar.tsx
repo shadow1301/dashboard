@@ -11,6 +11,7 @@ import {
   Truck,
   BarChart3,
   Upload,
+  History,
   Bell,
   Settings,
   LogOut,
@@ -25,6 +26,7 @@ const iconMap: Record<string, React.ElementType> = {
   Truck,
   BarChart3,
   Upload,
+  History,
   Bell,
   Settings,
 };

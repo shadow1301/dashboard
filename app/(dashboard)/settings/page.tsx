@@ -4,6 +4,7 @@ import { useState } from "react";
 import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 import {
   Dialog,
   DialogTrigger,
@@ -71,8 +72,11 @@ export default function SettingsPage() {
 
       setPasswordSuccess(true);
       setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      toast.success("Password updated");
     } catch (err) {
-      setPasswordError(err instanceof Error ? err.message : "Failed to update password");
+      const msg = err instanceof Error ? err.message : "Failed to update password";
+      toast.error(msg);
+      setPasswordError(msg);
     } finally {
       setPasswordLoading(false);
     }
@@ -84,6 +88,7 @@ export default function SettingsPage() {
     const res = await fetch("/api/user/data", { method: "DELETE" });
     if (!res.ok) {
       const data = await res.json();
+      toast.error(data.error || "Failed to delete data");
       setError(data.error || "Failed to delete data");
       setPageStatus("idle");
       return;
@@ -93,6 +98,7 @@ export default function SettingsPage() {
     queryClient.invalidateQueries({ queryKey: ["vehicleCount"] });
     setDataDialogOpen(false);
     setPageStatus("data-deleted");
+    toast.success("All data deleted");
   };
 
   const handleDeleteAccount = async () => {
