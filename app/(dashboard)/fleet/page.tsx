@@ -2,20 +2,29 @@
 
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useVehicles } from "@/hooks/useVehicles";
 import { FleetTable } from "@/components/fleet/FleetTable";
 import { FleetFilters } from "@/components/fleet/FleetFilters";
 import { Upload } from "lucide-react";
-import type { FleetFilters as FleetFiltersType } from "@/types";
+import type { FleetFilters as FleetFiltersType, DrivingStyle } from "@/types";
 
 export default function FleetPage() {
+  const searchParams = useSearchParams();
   const { data: vehicles, isLoading, error } = useVehicles();
-  const [filters, setFilters] = useState<FleetFiltersType>({
-    search: "",
-    batteryType: "all",
-    drivingStyle: "all",
-    healthMin: 0,
-    healthMax: 100,
+  const [filters, setFilters] = useState<FleetFiltersType>(() => {
+    const initial: FleetFiltersType = {
+      search: "",
+      batteryType: "all",
+      drivingStyle: "all",
+      healthMin: 0,
+      healthMax: 100,
+    };
+    const ds = searchParams.get("drivingStyle");
+    if (ds && ["gentle", "moderate", "aggressive", "conservative"].includes(ds)) {
+      initial.drivingStyle = ds as DrivingStyle;
+    }
+    return initial;
   });
 
   const filtered = useMemo(() => {

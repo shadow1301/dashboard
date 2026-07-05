@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid } from "recharts";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +15,7 @@ type Props = {
 };
 
 export function DrivingStyleImpact({ vehicles, isLoading }: Props) {
+  const router = useRouter();
   const colors = useChartColors();
 
   const data = useMemo(() => {
@@ -25,10 +27,19 @@ export function DrivingStyleImpact({ vehicles, isLoading }: Props) {
     }
     return Object.entries(groups).map(([drivingStyle, scores]) => ({
       drivingStyle: drivingStyle.charAt(0).toUpperCase() + drivingStyle.slice(1),
+      drivingStyleRaw: drivingStyle,
       avgHealth: Math.round(scores.reduce((a, b) => a + b, 0) / scores.length),
       count: scores.length,
     }));
   }, [vehicles]);
+
+  const handleBarClick = useCallback(
+    (entry: { drivingStyle: string; drivingStyleRaw?: string }) => {
+      const raw = entry.drivingStyleRaw || entry.drivingStyle.toLowerCase();
+      router.push(`/fleet?drivingStyle=${encodeURIComponent(raw)}`);
+    },
+    [router],
+  );
 
   if (isLoading) {
     return (
@@ -55,9 +66,16 @@ export function DrivingStyleImpact({ vehicles, isLoading }: Props) {
                 contentStyle={{ background: colors.surfaceInverse, color: colors.fgInverse, border: "none", borderRadius: "8px", fontSize: "13px" }}
                 formatter={(value) => [`${value}%`, "Avg Health"]}
               />
-              <Bar dataKey="avgHealth" fill={colors.healthWarning} radius={[4, 4, 0, 0]} />
+              <Bar
+                dataKey="avgHealth"
+                fill={colors.healthWarning}
+                radius={[4, 4, 0, 0]}
+                cursor="pointer"
+                onClick={(entry) => handleBarClick(entry as unknown as { drivingStyle: string; drivingStyleRaw?: string })}
+              />
             </BarChart>
           </ResponsiveContainer>
+          <p className="text-xs text-foreground-faint mt-2 text-center">Click a bar to view filtered fleet</p>
         </div>
       </CardContent>
     </Card>

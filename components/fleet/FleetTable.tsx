@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
-import { ArrowUp, ArrowDown, ArrowUpDown, Pencil, Trash2 } from "lucide-react";
+import { ArrowUp, ArrowDown, ArrowUpDown, Eye, Trash2 } from "lucide-react";
 import {
   Pagination,
   PaginationContent,
@@ -192,9 +192,9 @@ export function FleetTable({ vehicles, isLoading }: Props) {
                     <Button
                       variant="ghost"
                       size="icon-sm"
-                      onClick={() => router.push(`/fleet/${v.vehicle_id}?edit=true`)}
+                      onClick={() => router.push(`/fleet/${v.vehicle_id}`)}
                     >
-                      <Pencil className="size-3.5" />
+                      <Eye className="size-3.5" />
                     </Button>
                     <Dialog>
                       <DialogTrigger
