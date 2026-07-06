@@ -16,8 +16,8 @@
 | Form Validation    | Zod                           | Login form, CSV upload validation     |
 | Database           | PostgreSQL                    | Production data store                  |
 | ORM                | Prisma                        | Type-safe database access              |
-| Auth               | Auth.js v5 (NextAuth.js)      | Email/password auth with DB sessions  |
-| File Upload        | multer / formidable           | Multipart CSV file handling            |
+| Auth               | Auth.js v5 (NextAuth.js)      | Email/password auth with JWT strategy  |
+| File Upload        | — (JSON body)                 | CSV parsed client-side, JSON sent to API |
 | CSV Parsing        | papaparse                     | Client + server CSV parsing            |
 | Password Hashing   | bcryptjs                      | Secure password storage                |
 | Database Hosting   | Neon                           | Serverless PostgreSQL                   |
@@ -43,7 +43,7 @@
 │   │   ├── dashboard/
 │   │   │   └── page.tsx                 → Fleet dashboard overview
 │   │   ├── fleet/
-│   │   │   ├── page.tsx                 → Fleet table (server paginated)
+│   │   │   ├── page.tsx                 → Fleet table (client paginated, filters via ?drivingStyle=)
 │   │   │   └── [vehicleId]/
 │   │   │       └── page.tsx             → Vehicle detail + degradation charts
 │   │   ├── analytics/
@@ -51,9 +51,9 @@
 │   │   ├── alerts/
 │   │   │   └── page.tsx                 → Alerts dashboard
 │   │   ├── upload/
-│   │   │   ├── page.tsx                 → CSV upload (single + batch)
-│   │   │   └── history/
-│   │   │       └── page.tsx             → Upload history
+│   │   │   └── page.tsx                 → CSV upload (single file, JSON body)
+│   │   ├── upload-history/
+│   │   │   └── page.tsx                 → Upload history
 │   │   └── settings/
 │   │       └── page.tsx                 → Account settings
 │   └── api/
@@ -80,7 +80,7 @@
 │   ├── ui/                              → shadcn/ui primitives
 │   ├── dashboard/                       → Dashboard overview components
 │   ├── fleet/                           → Fleet table, vehicle detail components
-│   ├── analytics/                       → Analytics chart components
+│   ├── analytics/                       → Analytics chart components + FleetInsights narrative
 │   ├── alerts/                          → Alert table components
 │   ├── upload/
 │   │   ├── FileDropzone.tsx             → Drag-and-drop upload zone
@@ -95,25 +95,22 @@
 │   └── motion/                          → FramerMotion wrappers
 ├── lib/
 │   ├── utils.ts                         → cn() utility
-│   ├── auth.ts                          → Auth.js config (authOptions)
-│   ├── prisma.ts                        → Prisma client singleton
-│   ├── db.ts                            → Database query helpers
-│   ├── csv.ts                           → CSV parse + validate (papaparse + Zod)
-│   ├── upload.ts                        → File handling, disk storage helpers
-│   └── predictions.ts                   → Health score & RUL formula
-├── data/                                → (removed — replaced by DB, kept for reference)
+│   ├── auth.ts                          → Auth.js config (authOptions, hash/verify)
+│   ├── prisma.ts                        → Prisma client singleton (PrismaPg adapter)
+│   ├── __generated__/prisma/            → Prisma client output
+│   ├── providers.tsx                    → SessionProvider + QueryClientProvider + ThemeProvider + Toaster
+│   ├── predictions.ts                   → Health score & RUL formula
+│   └── theme.ts                         → Theme get/set localStorage helpers
 ├── hooks/
 │   ├── useAuth.ts                       → Session info hook (useSession wrapper)
-│   ├── useVehicles.ts                   → TanStack Query: vehicle list + single
-│   ├── useAlerts.ts                     → TanStack Query: alerts + mutations
-│   ├── useAnalytics.ts                  → TanStack Query: aggregated analytics
-│   ├── useUpload.ts                     → TanStack Query: upload mutations
-│   └── useUploadHistory.ts              → TanStack Query: upload history
+│   ├── useVehicles.ts                   → TanStack Query: vehicle list + single + count
+│   ├── useAlerts.ts                     → TanStack Query: alerts + alerts by vehicle
+│   └── useChartColors.ts               → Recharts color tokens from CSS variables
 ├── prisma/
 │   └── schema.prisma                    → Database schema
 ├── types/
 │   └── index.ts                         → Shared types
-└── uploads/                             → Temporary CSV file storage (gitignored)
+└── prisma.config.ts                     → Prisma v7 config (defineConfig)
 ```
 
 ---
@@ -299,29 +296,25 @@ model Session {
 | GET | /api/alerts | Yes | Alerts list (query: severity, status, page, limit) |
 | PATCH | /api/alerts/[alertId] | Yes | Mark as read / dismiss |
 | GET | /api/analytics | Yes | Aggregated analytics data |
-| POST | /api/upload | Yes | Single CSV file upload (multipart) |
-| POST | /api/upload/batch | Yes | Multiple CSV files (multipart array) |
+| POST | /api/upload | Yes | CSV upload (JSON body: { filename, rows }) |
+| DELETE | /api/vehicles/[vehicleId] | Yes | Delete vehicle + its alerts |
+| DELETE | /api/user/data | Yes | Delete all user data (vehicles, alerts, upload history) |
+| DELETE | /api/user/account | Yes | Delete user account + all data |
+| POST | /api/auth/password | Yes | Change password (current + new) |
 | GET | /api/upload-history | Yes | Past upload records |
 
 ### File Upload Contract
 
 ```
 POST /api/upload
-Content-Type: multipart/form-data
-Body: { file: File (CSV) }
+Content-Type: application/json
+Body: { filename: string, rows: Record<string, string>[] }
 
 Response 200:
-{
-  "uploadId": "ckl...",
-  "insertedCount": 950,
-  "errorCount": 3,
-  "errors": [
-    { "row": 12, "field": "battery_capacity", "message": "Invalid number" },
-    { "row": 45, "field": "vehicle_id", "message": "Required" },
-    { "row": 67, "field": "driving_style", "message": "Must be gentle, moderate, or aggressive" }
-  ],
-  "status": "completed"
-}
+{ "count": 950 }
+
+Response 400:
+{ "error": "description" }
 ```
 
 ---
@@ -452,7 +445,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
 - Health score range: 0–100 (100 = perfect)
 - End-of-life threshold: score < 60 → "replace soon"
 - Alert severity: `critical` (< 60), `warning` (60–79), `info` (80–90)
-- Server pagination defaults: page 1, limit 50, max limit 200
+- Client pagination defaults: 20 per page (fleet), 15 per page (alerts)
+- URL-driven filters: fleet page reads `?drivingStyle=` from search params
 - CSV max file size: 10MB (single), 50MB total (batch)
 - Supported CSV columns must match Vehicle type
 - New user state: empty — no seed data, upload page is the entry point

@@ -190,13 +190,85 @@ File: components/upload/CsvPreview.tsx
 | Cell | `px-3 py-2 font-mono text-xs text-foreground border-b border-border` |
 
 ### Pagination
-(Used in FleetTable and AlertTable for server-side pages)
+(Used in FleetTable and AlertsPage — client-side slice of fetched data)
 | Property | Class |
 |----------|-------|
-| Container | `flex items-center justify-between pt-4 text-sm` |
-| Info text | `text-foreground-muted` |
-| Buttons | `inline-flex items-center gap-1 px-3 py-1.5 rounded-md border border-border-strong text-foreground hover:bg-surface-raised disabled:opacity-50` |
-| Active page | `bg-primary text-primary-foreground border-primary` |
+| Container | `flex items-center justify-between px-4 py-2 border-t border-border` |
+| Info text | `text-xs text-foreground-faint` |
+| Page buttons | `Button variant={p === page ? "outline" : "ghost"} size="icon-sm" className="size-8 text-xs"` |
+| Prev/Next | `PaginationPrevious` / `PaginationNext` with disabled state `pointer-events-none opacity-50` |
+| Ellipsis | `PaginationEllipsis` for gaps >1 between current and edge pages |
+| Page size | 20 (FleetTable), 15 (AlertsPage) |
+
+### FleetInsights
+File: components/analytics/FleetInsights.tsx
+| Property | Class |
+|----------|-------|
+| Container | `bg-surface border border-border rounded-lg p-6 space-y-3` |
+| Icon row | `flex items-center gap-2 text-foreground font-semibold text-sm` |
+| Icon | `Lightbulb size-4 text-warning` |
+| Body | `text-sm text-foreground-muted leading-relaxed` |
+| Highlights | `<span className="text-foreground font-medium">` for data values |
+| Risk number | `<span className="text-error font-medium">` for at-risk count |
+
+### Upload Blocking Overlay
+File: app/(dashboard)/upload/page.tsx (inline)
+| Property | Class |
+|----------|-------|
+| Container | `fixed inset-0 z-50 flex flex-col items-center justify-center bg-background/90 backdrop-blur-sm` |
+| Spinner | `Loader2 size-16 animate-spin text-primary` with `Database` icon overlay |
+| Title | `text-xl font-semibold text-foreground` |
+| Body | `text-foreground-muted` |
+| Progress bar | `w-48 h-1.5 bg-surface-raised rounded-full overflow-hidden` with `h-full bg-primary rounded-full animate-pulse w-[60%]` |
+| Cancel button | `text-sm text-foreground-faint hover:text-error transition-colors flex items-center gap-2` (shown after 60s) |
+
+### Empty State (Dashboard & Fleet)
+Used in dashboard/page.tsx and fleet/page.tsx
+| Property | Class |
+|----------|-------|
+| Container | `flex flex-col items-center justify-center py-20 text-center` |
+| Icon | `size-12 text-foreground-faint mb-4` |
+| Heading | `text-lg font-semibold text-foreground mb-2` |
+| Body | `text-foreground-muted text-sm mb-6 max-w-sm` |
+| CTA button | `inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90` |
+
+### Settings Sections
+File: app/(dashboard)/settings/page.tsx
+| Property | Class |
+|----------|-------|
+| Section header | `flex items-center gap-3 mb-4` with icon `size-5 text-foreground-muted` and `h2 text-lg font-semibold` |
+| Password form | `space-y-4 max-w-sm` |
+| Section divider | `hr border-border` |
+| Danger zone | icon `text-error`, button `variant="destructive"` |
+| Confirmation dialog | `DialogContent` with `bg-error/10 p-3 text-sm text-error` warning inside |
+
+### Toast Notifications
+Library: sonner, wired via `lib/providers.tsx` as `<Toaster richColors closeButton position="top-right" />`
+| Property | Class |
+|----------|-------|
+| Placement | `top-right` |
+| Style | `richColors` with `closeButton` |
+| Usage | `toast.success("...")`, `toast.error("...")` in upload, delete, password change, alert update flows |
+| Error rollback | Optimistic UI reverted on API failure |
+
+### Chart Patterns
+| Property | Class |
+|----------|-------|
+| Card wrapper | `Card` with `CardHeader` + `CardTitle text-base` + `CardContent` |
+| Chart height | `h-[250px]` (bar), `h-[300px]` (scatter) |
+| Tooltip | `contentStyle={{ background: colors.surfaceInverse, color: colors.fgInverse, border: "none", borderRadius: "8px", fontSize: "13px" }}` |
+| Grid | `CartesianGrid strokeDasharray="3 3" stroke={colors.grid}` |
+| Axis | `stroke={colors.fgFaint} tick={{ fontSize: 12 }}` |
+| Clickable bar | Recharts `<Bar cursor="pointer" onClick={...}>` — navigates to filtered fleet page |
+
+### Dialog + Delete Confirmation
+Used in FleetTable and SettingsPage
+| Property | Class |
+|----------|-------|
+| Trigger | `DialogTrigger` wrapping the action button |
+| Warning box | `flex items-start gap-2 rounded-lg bg-error/10 p-3 text-sm text-error` |
+| Confirm button | `variant="destructive"` with loading state `<Loader2 className="size-4 animate-spin mr-2" />Deleting...` |
+| Footer | `DialogFooter` with action button |
 
 ### Skeleton (Loading State)
 | Property | Class |

@@ -101,6 +101,7 @@ export function LoginForm() {
             Don&apos;t have an account?{" "}
             <Link href="/register" className="text-primary hover:underline">Create one</Link>
           </p>
+          <p className="text-xs text-foreground-faint text-center">Just want to try, use email: asd@asd.asd and pass:asdasdasd</p>
         </CardFooter>
       </form>
     </Card>

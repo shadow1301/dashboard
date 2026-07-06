@@ -46,8 +46,8 @@ Data is uploaded by users via CSV files (single or batch). Each user's data is i
 /fleet/[vehicleId]      → Single-vehicle deep-dive: degradation curve, cycle history, prediction
 /analytics              → Cross-fleet trend analysis, battery type comparison, prediction scenarios
 /alerts                 → Maintenance alerts dashboard with severity filtering
-/upload                 → CSV upload page (single file + batch upload)
-/upload/history         → Upload history with status and error details
+/upload                 → CSV upload page (single file, client-side parse, JSON to API)
+/upload-history         → Upload history with status and row counts
 /settings               → User account settings, API keys, profile
 ```
 
@@ -115,7 +115,7 @@ Sidebar-driven dashboard layout (fleet management standard):
 - CSV row-level validation with error reporting
 - PostgreSQL database with Prisma ORM
 - Fleet dashboard with key metric cards and health distribution
-- Fleet table with sort, filter, and search (server-side pagination for scalability)
+- Fleet table with sort, filter, and search (client-side pagination, URL-driven filters)
 - Vehicle detail page with degradation chart and prediction
 - Health score calculation (formula based on SoH baseline + cycle/temp/fast-charge/driving-style penalties)
 - Remaining useful life prediction
@@ -151,7 +151,7 @@ Fleet operations managers and maintenance leads at EV fleet operators — delive
 - CSV upload validates schema and reports errors per-row
 - Batch upload processes multiple files with progress feedback
 - Dashboard loads and displays accurate aggregate metrics from uploaded data
-- Sort/filter/search on the fleet table works with server-side pagination
+- Sort/filter/search on the fleet table works with client-side pagination
 - Health score formula produces believable relative rankings
 - Upload history shows past uploads with status and row counts
 - Theme toggle persists and works across all pages

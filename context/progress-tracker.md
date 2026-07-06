@@ -7,7 +7,7 @@ Update this file after every completed feature. Any AI agent reading this should
 ## Current Status
 
 **Phase:** Phase 8 — Cleanup & Polish complete
-**Last completed:** Static data removal, alert generation, edit/delete vehicles, upload history page, UI polish
+**Last completed:** PATCH /api/alerts/[id], toast notifications (sonner), client-side pagination, responsive polish, dropdown bg opacity fix (missing `--color-popover` in theme), analytics page data story (FleetInsights), clickable driving style bar → filtered fleet page, Pencil→Eye icon swap, driving style filter via URL search params
 **Next:** Maintenance / feature requests
 
 ---
